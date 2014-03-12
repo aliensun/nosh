@@ -1,0 +1,134 @@
+<?php
+
+/**
+ * @file
+ * Module for fetching data from foursqure.com.
+ * This module provides block content retrieved from a
+ * foursqure.com .
+ * @see http://www.foursquare.com
+ */
+/**
+ * Implements of hook_block()
+ */
+$path = drupal_get_path('module', 'foursqure_tips');
+drupal_add_css($path . '/css/forsqure_style.css');
+
+/**
+ * Implements hook_block_info().
+ */
+function foursqure_tips_block_info() {
+    $blocks['foursqure_form']['info'] = t('Foursquare Tips');
+    // Not worth caching.
+    $blocks['foursqure_form']['cache'] = DRUPAL_NO_CACHE;
+    $blocks['foursqure_form']['properties']['administrative'] = TRUE;
+    return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function foursqure_tips_block_view($delta = '') {
+    $block['content'] = foursqure_tips_get_tips();
+    return $block;
+}
+
+/**
+ *
+ *
+ */
+function foursqure_tips_block_configure($delta = '') {
+    $form = array();
+    if ($delta == 'foursqure_form') {
+        // All we need to provide is the specific configuration options for our
+        // block. Drupal will take care of the standard block configuration options
+        // (block title, page visibility, etc.) and the save button.
+        $form['foursqure_tips_latitude'] = array(
+            '#type' => 'textfield',
+            '#title' => t('Enter Latitude'),
+            '#size' => 60,
+            '#description' => t('Latitude of location.'),
+            '#default_value' => variable_get('foursqure_tips_latitude', '40.7'),
+        );
+        $form['foursqure_tips_longitude'] = array(
+            '#type' => 'textfield',
+            '#title' => t('Enter Longitude'),
+            '#size' => 60,
+            '#description' => t('Logitude of location.'),
+            '#default_value' => variable_get('foursqure_tips_longitude', '-74'),
+        );
+        $form['foursqure_tips_limit'] = array(
+            '#type' => 'textfield',
+            '#title' => t('Enter Limit'),
+            '#size' => 60,
+            '#description' => t('Enter Limit of tips'),
+            '#default_value' => variable_get('foursqure_tips_limit', '5'),
+        );
+        $form['foursqure_tips_token'] = array(
+            '#type' => 'textfield',
+            '#title' => t('Foursqure oauth_token'),
+            '#size' => 60,
+            '#description' => t('Enter oauth_token given by foursqure API'),
+            '#default_value' => variable_get('foursqure_tips_token', 'ONU1CTFFDMCYHLIIX1HMPZKS2BUOFTDHYXB1VCD3SKW1FDHA'),
+        );
+    }
+    return $form;
+}
+
+/**
+ * This fountion is used for getting data from foursqure.com and returns html formatted data for content
+ * @return String $tips
+ */
+function foursqure_tips_get_tips() {
+    $tipsarray = array();
+    static $foursqure_tips_jsondata;
+    $foursqure_tips_limit = variable_get('foursqure_tips_limit', '5');
+    $foursqure_tips_latitude = variable_get('foursqure_tips_latitude', '40.7');
+    $foursqure_tips_longitude = variable_get('foursqure_tips_longitude', '-74');
+    $foursqure_tips_token = variable_get('foursqure_tips_token', 'ONU1CTFFDMCYHLIIX1HMPZKS2BUOFTDHYXB1VCD3SKW1FDHA');
+    $cache = cache_get('foursqure_tips_cache_data');
+
+    if (empty($cache->data)) {
+        $foursqure_tips_jsondata = file_get_contents('https://api.foursquare.com/v2/tips/search?ll=' . $foursqure_tips_latitude . ',' . $foursqure_tips_longitude . '&limit=' . $foursqure_tips_limit . '&oauth_token=' . $foursqure_tips_token . '');
+        $foursqure_tips_data = json_decode($foursqure_tips_jsondata);
+        $foursqure_tips_serialized_data = serialize($foursqure_tips_data);
+        cache_set('foursqure_tips_cache_data', $foursqure_tips_serialized_data, 'cache', time() + 360);
+    } else {
+        $foursqure_tips_data = unserialize($cache->data);
+    }
+    $foursqure_tips_code = $foursqure_tips_data->meta->code;
+    if ($foursqure_tips_code == 200) {
+        foreach ($foursqure_tips_data->response as $innerdata) {
+            foreach ($innerdata as $foursqure_tips_key) {
+                $foursqure_tip_photo = filter_xss($foursqure_tips_key->venue->categories[0]->icon);
+                $foursqure_tip_text = filter_xss($foursqure_tips_key->text);
+                $foursqure_tip_id = filter_xss($foursqure_tips_key->id);
+                $foursqure_tip_venue = filter_xss($foursqure_tips_key->venue->name);
+                $foursqure_tip_timestamp = filter_xss($foursqure_tips_key->createdAt);
+                $tipsarray['timestamp'][$foursqure_tip_id] = filter_xss($foursqure_tip_timestamp);
+                $tipsarray['text'][$foursqure_tip_id] = filter_xss($foursqure_tip_text);
+                $tipsarray['venue'][$foursqure_tip_id] = filter_xss($foursqure_tip_venue);
+                $tipsarray['photo'][$foursqure_tip_id] = filter_xss($foursqure_tip_photo);
+                $tipsarray['tipid'][$foursqure_tip_timestamp] = filter_xss($foursqure_tip_id);
+            }
+        }
+        asort($tipsarray['timestamp']);
+        $foursqure_tip_timestamps = array_reverse($tipsarray['timestamp']);
+        $output = theme("foursqure_tips_theme", array("foursqure_tips_var" => $foursqure_tip_timestamps, "foursqure_tips_array" => $tipsarray));
+    } else {
+        $output = t('Cannot Connect to Foursquare');
+    }
+
+    return $output;
+}
+
+/**
+ * Implements hook_theme
+ */
+function foursqure_tips_theme() {
+    return array(
+        'foursqure_tips_theme' => array(
+            'template' => 'foursqure_tips',
+            'variables' => array('foursqure_tips_var' => null, "foursqure_tips_array" => null)
+        )
+    );
+}

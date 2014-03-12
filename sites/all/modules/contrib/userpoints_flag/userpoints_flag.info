@@ -1,0 +1,12 @@
+name = User Points Flag
+description = Integrates User Points with flag API.
+package = Userpoints
+core = 7.x
+dependencies[] = userpoints
+dependencies[] = flag
+; Information added by drupal.org packaging script on 2013-10-19
+version = "7.x-3.x-dev"
+core = "7.x"
+project = "userpoints_flag"
+datestamp = "1382150259"
+

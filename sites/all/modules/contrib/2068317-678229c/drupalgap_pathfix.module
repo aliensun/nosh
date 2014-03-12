@@ -1,0 +1,111 @@
+<?php
+  
+/**
+ * @file
+ * The companion Drupal Module for the DrupalGap Pathfix module.
+ */
+
+/**
+ * Implements hook_help().
+ */
+function drupalgap_pathfix_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#drupalgap_pathfix':
+      $doc_msg = t(
+        'Visit the <a href="@doc_url">DrupalGap Pathfix Project Page</a> for more info.',
+        array('@doc_url' => 'http://drupalgap.org/project/pathfix')
+      );
+      return "<p>$doc_msg</p>";
+      break;
+  }
+}
+
+/**
+ * Implements hook_services_request_postprocess_alter().
+ */
+function drupalgap_pathfix_services_request_postprocess_alter($controller, $args, &$result) {
+  
+  // Modify the result of the node retrieve resource.
+  if ($controller['callback'] == '_node_resource_retrieve') {
+    
+    // If there isn't a body, just return.
+    if (!isset($result->body)) { return; }
+    
+    // Grab the base URL and prepare the result.
+    global $base_url;
+    $result->drupalgap_pathfix = array(
+      'body' => array()
+    );
+    
+    // Iterate over each language code in the body.
+    foreach($result->body as $lngcode => $body) {
+      
+      // Prepare an empty array for this language code.
+      $result->drupalgap_pathfix['body'][$lngcode] = array();
+      
+      // Iterate over each delta for this language code.
+      foreach($body as $delta => $content) {
+        
+        // Place the entire body content into our result, we'll make changes to
+        // it below.
+        $result->drupalgap_pathfix['body'][$lngcode][$delta] = $content;
+        
+        // Replace relative image paths with an absolute path to the Drupal site.
+        $string = $result->drupalgap_pathfix['body'][$lngcode][$delta]['value'];
+        $pattern = '/(<img.*src=[\'"])(\/)/';
+        $replacement = "$1" . $base_url . "$2";
+        $result->drupalgap_pathfix['body'][$lngcode][$delta]['value'] = preg_replace($pattern, $replacement, $string);
+        
+        // Replace external links with an InAppBrowser link.
+        // credit: http://www.codinghorror.com/blog/2008/10/the-problem-with-urls.html
+        // kodos syntax backup: href=["']\(?\bhttps*://[-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|]['"]
+        $string = $result->drupalgap_pathfix['body'][$lngcode][$delta]['value'];
+        $pattern = '/href=["\']\(?\bhttps*:\/\/[-A-Za-z0-9+&@#\/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#\/%=~_()|][\'"]/';
+        preg_match_all($pattern, $string, $matches);
+        if (isset($matches[0])) {
+          foreach($matches[0] as $match) {
+            $start = 6;
+            $url = substr($match, $start, strlen($match)-1-$start);
+            $replacement = 'href="#" onclick="javascript:window.open(\'' . $url . '\', \'_blank\', \'location=yes\');"';
+            $string = str_replace($match, $replacement, $string);
+            $result->drupalgap_pathfix['body'][$lngcode][$delta]['value'] = $string;
+          }
+        }
+        
+        // Replace internal links with drupalgap_goto() calls.
+        // credit: http://www.codinghorror.com/blog/2008/10/the-problem-with-urls.html
+        // kodos syntax backup: href=['"]/*([-A-Za-z0-9+&@#\/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#\/%=~_()|])['"]
+        $string = $result->drupalgap_pathfix['body'][$lngcode][$delta]['value'];
+        $pattern = '/href=[\'"]\/*([-A-Za-z0-9+&@#\/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#\/%=~_()|])[\'"]/';
+        preg_match_all($pattern, $string, $matches);
+        if (isset($matches[0])) {
+          foreach($matches[0] as $match) {
+            // Determine the start position path within the match.
+            $start = 6;
+            if (strpos($match, '/') == 6) { $start = 7; }
+            $path = substr($match, $start, strlen($match)-1-$start);
+            // Skip href's with an # at the front or any mailto links.
+            if (strpos($path, '#') === 0 || strpos($path, 'mailto:') === 0) {
+              continue;
+            }
+            // Try to find an exact URL source for this path (alias).
+            // TODO - this makes a DB hit for each URL, not good for performance!
+            $source = db_query(
+              'SELECT source FROM {url_alias} WHERE alias = :alias',
+              array(':alias' => $path)
+            )->fetchField();
+            if ($source) { $path = $source; }
+            $replacement = 'href="" onclick="javasciprt:drupalgap_goto(\'' . $path . '\');"';
+            $string = str_replace($match, $replacement, $string);
+            $result->drupalgap_pathfix['body'][$lngcode][$delta]['value'] = $string;  
+          }  
+        }
+        
+      } // delta
+      
+    } // language code
+    
+  } // _node_resource_retrieve
+  
+}
+

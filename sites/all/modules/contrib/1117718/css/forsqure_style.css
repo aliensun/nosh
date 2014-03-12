@@ -1,0 +1,55 @@
+/**
+ * @file
+ * This file is used for make a style on foursqure content.
+*/
+#foursquare_container{
+    border: 1px solid gray;
+    font-size: 11px;
+    font-weight: normal;
+    height: 300px;
+    overflow-y: scroll;
+    padding: 5px;
+    min-width: 198px;
+    width: auto;
+}
+#foursqure_container_tips{
+
+}
+#foursqure_container_tipsimage {
+    float: left;
+    height: 32px;
+    margin: 0 10px 10px 0;
+    width: 32px;
+    padding-top:5px;
+}
+#foursqure_container_tipscontent {
+    width: auto;
+    min-width: 139px;
+    display: table-cell;
+}
+#foursqure_container_tipscontent span{
+    color: gray;
+    font-size: 9px;
+}
+#fsquare{
+    background-image:url('images/fsquare-logo.png');
+    background-repeat:no-repeat;
+    height:36px;
+    width:120px;
+    float:right;
+}
+#foursqure_container_tipsimage img{
+    width:32px;
+    height:32px;
+}
+
+.foursqure_container_vname{
+    color: #d7568c;
+    font-weight: bold;
+    font-size: 12px;
+    margin: 0px;
+    margin-bottom:1px;
+}
+.clear {
+    clear: both;
+}

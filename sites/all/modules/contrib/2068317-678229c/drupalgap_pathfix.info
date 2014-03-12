@@ -1,0 +1,5 @@
+name = DrupalGap Pathfix
+description = The companion Drupal module for the DrupalGap Pathfix module.
+package = Mobile
+core = 7.x
+dependencies[] = drupalgap

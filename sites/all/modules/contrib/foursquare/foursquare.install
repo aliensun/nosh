@@ -1,0 +1,63 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the foursquare module.
+ *
+ */
+
+
+/**
+ * @file
+ * Installation file for the foursquare module
+ */
+function foursquare_install() {
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_install_schema('foursquare')
+}
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function foursquare_uninstall() {
+  // TODO The drupal_(un)install_schema functions are called automatically in D7.
+  // drupal_uninstall_schema('foursquare')
+}
+
+/**
+ * @todo Please document this function.
+ * @see http://drupal.org/node/1354
+ */
+function foursquare_schema() {
+  $schema = array();
+  $schema['foursquare_tokens'] = array(
+    'description' => 'Stores request and access tokens for your users',
+    'fields' => array(
+      'uid' => array(
+        'description' => 'The foursquare user id on the drupal site.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'token_key' => array(
+        'description' => 'Token key.',
+        'type' => 'varchar',
+        'length' => 56,
+        'not null' => TRUE,
+      ),
+      'secret' => array(
+        'description' => 'Token secret.',
+        'type' => 'varchar',
+        'length' => 56,
+        'not null' => TRUE,
+      ),
+      'type' => array(
+        'description' => 'Token type: request or access.',
+        'type' => 'varchar',
+        'length' => 7,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('uid', 'token_key'),
+  );
+  return $schema;
+}

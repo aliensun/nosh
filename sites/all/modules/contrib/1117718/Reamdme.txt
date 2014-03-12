@@ -1,0 +1,7 @@
+Read Me
+-----------------------------
+1. Go to Block Configuration
+2. Enter Latitude
+3. Enter Logitude
+4. Enter Limit
+5. Enter Foursqure Token Key

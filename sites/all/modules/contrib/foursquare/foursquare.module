@@ -1,0 +1,279 @@
+<?php
+// $id:
+/**
+ * @file
+ * Module to integrate foursquare with Drupal, using the foursquare-async php library
+ */
+
+$path = drupal_get_path('module', 'foursquare');
+require_once $path . '/foursquare-async/EpiCurl.php';
+require_once $path . '/foursquare-async/EpiOAuth.php';
+require_once $path . '/foursquare-async/EpiFoursquare.php';
+
+/**
+ * hook_menu
+ */
+function foursquare_menu() {
+  // initiate authorization of user
+  $items['foursquare/authorize'] = array(
+    'title' => 'foursquare authorize',
+    'page callback' => 'foursquare_authorize',
+    'access arguments' => array('foursquare'),
+    'type' => MENU_CALLBACK,
+  );
+
+  // Callback endpoint to finish authentication of the user
+  $items['foursquare/authenticate'] = array(
+    'title' => 'foursquare authorize',
+    'page callback' => 'foursquare_authenticate',
+    'access arguments' => array('foursquare'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/config/services/foursquare'] = array(
+    'title' => t('Foursquare'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('foursquare_settings'),
+    'access arguments' => array('administer foursquare'),
+  );
+  return $items;
+}
+
+/**
+ * hook_permission()
+ */
+function foursquare_permission() {
+  return array(
+    'foursquare' => array(
+      'title' => t('foursquare'),
+      'description' => t('TODO Add a description for \'foursquare\''),
+    ),
+    'administer foursquare' => array(
+      'title' => t('administer foursquare'),
+      'description' => t('TODO Add a description for \'administer foursquare\''),
+    ),
+  );
+}
+
+/**
+ * Foursquare settings form
+ */
+function foursquare_settings($form, &$form_state) {
+  $form['foursquare_token'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Foursquare application keys'),
+    '#description' => t('Get your application keys at <a href="http://www.foursquare.com/oauth">http://www.foursquare.com/oauth</a>'),
+  );
+  $form['foursquare_token']['foursquare_consumer_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Foursquare Consumer Key'),
+    '#default_value' => variable_get('foursquare_consumer_key', ''),
+  );
+  $form['foursquare_token']['foursquare_consumer_secret'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Foursquare Secret Key'),
+    '#default_value' => variable_get('foursquare_consumer_secret', ''),
+  );
+  return system_settings_form($form);
+}
+/**
+ *  redirect user to foursquare for authentication
+ */
+function foursquare_authenticate() {
+  $key = variable_get('foursquare_consumer_key', '');
+  $secret = variable_get('foursquare_consumer_secret', '');
+  $fsObj = new EpiFoursquare($key, $secret);
+  try {
+    $parts = $fsObj->getAuthorizeUrl();
+  }
+  catch (Exception $ex) {
+    drupal_set_message('error connecting to Foursquare');
+    drupal_goto('user');
+  }
+
+  foursquare_store_token($parts['oauth_token'], $parts['oauth_token_secret'], 'request');
+  drupal_goto($parts['url'] . '?oauth_token=' . $parts['oauth_token']);
+}
+
+/**
+ * Callback when user is redirected from foursquare back to the Drupal site.
+ * Get the access keys and store them
+ */
+function foursquare_authorize() {
+  $key = variable_get('foursquare_consumer_key', '');
+  $secret = variable_get('foursquare_consumer_secret', '');
+  if (isset($_GET['oauth_token'])) {
+    $request_token = foursquare_load_token($_GET['oauth_token']);
+    $fsObj = new EpiFoursquare($key, $secret);
+    $fsObj->setToken($_GET['oauth_token'], $request_token->secret);
+    $access_token = $fsObj->getAccessToken();
+    foursquare_store_token($access_token->oauth_token, $access_token->oauth_token_secret, 'access');
+    foursquare_remove_token($_GET['oauth_token']);
+  }
+  drupal_goto('user');
+}
+
+/**
+ * Implements hook_user_view().
+ */
+function foursquare_user_view($account, $view_mode) {
+  if (TRUE) {
+    $account->content['foursquare'] = array(
+      '#attributes' => array('class' => 'user-member'),
+      '#title' => t('Foursquare'),
+      '#type' => 'user_profile_category',
+      '#weight' => 5,
+    );
+    $access_token = foursquare_load_user_token($account->uid, 'access');
+    if ($access_token != NULL && foursquare_check_token($access_token->token_key, $access_token->secret)) {
+      $value  = theme('image', array('path' => drupal_get_path('module', 'foursquare') . '/foursquare_logo.png')) . '<br />';
+      $value .= t('Connected with Foursquare. Revoke your connection !here', array('!here' => l('here', 'http://foursquare.com/settings')));
+    }
+    else {
+      $value = l(theme('image', array('path' => drupal_get_path('module', 'foursquare') . '/foursquare_logo.png')), 'foursquare/authenticate', array('html' => TRUE)) . '<br/>' . l('connect with foursquare', 'foursquare/authenticate');
+    }
+    $account->content['foursquare']['connect'] = array(
+      '#title' => t('Connect'),
+      '#type' => 'user_profile_item',
+      '#value' => $value,
+      '#weight' => 1,
+    );
+  }
+}
+
+/**
+ * hook_user()
+ * Provide basic foursquare information on the user profile page
+ */
+function foursquare_user_OLD($op, &$edit, &$account, $category = NULL) { }
+
+/**
+ * Store a  token
+ * @param $key
+ *  key of the token to store
+ * @param $secret
+ *  secret of the token to store
+ * @param $type
+ *   Token type. This can be 'request' or 'access'
+ * @param $uid
+ *   User for who the token must be stored
+ */
+function foursquare_store_token($key, $secret, $type, $uid = '') {
+  if ($uid == '') {
+    global $user;
+    $uid = $user->uid;
+  }
+  $query = "INSERT INTO {foursquare_tokens} (uid, token_key, secret, type) VALUES (%d, '%s', '%s', '%s')";
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query($query, $uid, $key, $secret, $type) */
+  $id = db_insert('foursquare_tokens')
+  ->fields(array(
+    'uid' => $uid,
+    'token_key' => $key,
+    'secret' => $secret,
+    'type' => $type,
+  ))
+  ->execute();
+}
+
+/**
+ * Load a token, based on the key
+ * @param $token_key
+ *  key of the token.
+ * @return
+ *  the token if a token is found. NULL is no token is found.
+ */
+function foursquare_load_token($token_key) {
+  $query = "SELECT * FROM {foursquare_tokens} WHERE token_key = '%s'";
+  $result = db_query("SELECT * FROM {foursquare_tokens} WHERE token_key = :token_key", array(':token_key' => $token_key));
+  foreach ($result as $date) {
+    return $data;
+  }
+  return NULL;
+}
+
+/**
+ * Load a token for a specific user
+ * @param $uid
+ *  uid of the user for who the token must be loaded
+ * @param $type
+ *  Type of token. This can be 'request' or 'access'.
+ * @return
+ *  the token if a token is found. NULL is no token is found.
+ */
+function foursquare_load_user_token($uid, $type) {
+  $query = "SELECT * FROM {foursquare_tokens} WHERE uid = %d AND type = '%s'";
+  $result = db_query("SELECT * FROM {foursquare_tokens} WHERE uid = :uid AND type = :type", array(':uid' => $uid, ':type' => $type));
+  foreach ($result as $token) {
+    return $token;
+  }
+  return NULL;
+}
+
+/**
+ * Helper function to see if user is connected to foursquare
+ * TODO: do a real check?
+ */
+function foursquare_user_is_connected($uid) {
+  $token = foursquare_load_user_token($uid, 'access');
+  if ($token != NULL) {
+    return TRUE;
+  }
+  else {
+    return FALSE;
+  }
+}
+
+/**
+ * Remove a token, based on the key
+ * @param $token_key
+ *  key of the token.
+ */
+function foursquare_remove_token($token_key) {
+  $query = "DELETE FROM {foursquare_tokens} WHERE token_key = '%s'";
+  // TODO Please review the conversion of this statement to the D7 database API syntax.
+  /* db_query($query, $token_key) */
+  db_delete('foursquare_tokens')
+  ->condition('token_key', $token_key)
+  ->execute();
+}
+
+/**
+ * Check if a token is still valid.
+ * @param $token_key
+ *  the key of the token that has to be validated
+ * @param $token_secret
+ *  the secret of the token that has to be validated
+ * @return
+ *  TRUE of FALSE. In case the token is not valid, it is removed from the database!
+ */
+function foursquare_check_token($token_key, $token_secret) {
+  global $user;
+  $consumer_key = variable_get('foursquare_consumer_key', '');
+  $consumer_secret = variable_get('foursquare_consumer_secret', '');
+  $fsObj = new EpiFoursquare($consumer_key, $consumer_secret, $token_key, $token_secret);
+  try {
+    $foursquare_user = $fsObj->get('/user.json', array('id' => $user->id));
+    $foursquare_user->screen_name;
+    return TRUE;
+  }
+  catch (EpiFoursquareNotAuthorizedException $e) {
+    foursquare_remove_token($token_key);
+    return FALSE;
+  }
+}
+
+/**
+ * Helper function to get a foursquare object
+ */
+function foursquare_get_object($uid = '') {
+  $consumer_key = variable_get('foursquare_consumer_key', '');
+  $consumer_secret = variable_get('foursquare_consumer_secret', '');
+  if ($uid != '') {
+    $token = foursquare_load_user_token($uid, 'access');
+    return new EpiFoursquare($consumer_key, $consumer_secret, $token->token_key, $token->secret);
+  }
+  else {
+    return new EpiFoursquare();
+  }
+}
