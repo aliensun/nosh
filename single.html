@@ -1,0 +1,23 @@
+<html>
+<head>
+</head>
+<body>
+<p> Some text </p>
+ 
+<div id="menusContainer"></div>
+ 
+<p> Some other text </p>
+ 
+<script type="text/javascript" src="http://menus.singleplatform.co/jsload?load=menus.2&apiKey=K4j13GNS317751SV13SHUUEX2sgg7D2bs"></script>
+<script>
+    var menuApi = new MenusApi("K4j13GNS317751SV13SHUUEX2sgg7D2bs");
+    menuApi.setBaseFontSize("10pt");
+    menuApi.setPrimaryFontFamily("Arial");
+    menuApi.setPrimaryBackgroundColor("#eee");
+    menuApi.setSecondaryBackgroundColor("#ccc");
+    menuApi.setSectionTitleFontColor("blue");
+    menuApi.loadMenusForLocation("haru-7", "menusContainer");
+</script>
+ 
+</body>
+</html>
