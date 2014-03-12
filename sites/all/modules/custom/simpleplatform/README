@@ -1,0 +1,21 @@
+This is the SinglePlatform API client for PHP.
+
+Contents:
+
+  bin/ - Scripts that show how the API library is used
+  bin/SP_SearchLocations.php - A script to query for specific locations
+  bin/SP_GetLocation.php - A script that gets the specified location
+  bin/SP_GetMenus.php - A script to get the menus for a specific location
+  lib/SP/SP_ApiLibrary.php - A sample library showing how to work with the
+                             SinglePlatform REST API
+
+The Scripts need to be run from within the bin directory. Running the scripts
+is done as follows:
+
+  php SP_GetLocation.php false YOUR_SIGNING_KEY YOUR_CLIENT_ID haru-7
+
+All the scripts have help instructions built in. Use the '-h' parameter to
+show the help.
+
+  php SP_GetLocation.php -h
+
