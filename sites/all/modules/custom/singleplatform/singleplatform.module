@@ -2,7 +2,7 @@
 
 /**
  * @file
- * Simple Platform Web service client module.
+ * Single Platform Web service client module.
  */
 
 
@@ -11,9 +11,9 @@ function simpleplatform_menu()
 {
     $items = array();
 
-    $items['admin/config/simpleplatform'] = array(
-        'title' => 'Sim';
-    )
+    $items['admin/config/singleplatform'] = array(
+        'title' => 'Signle Platform API Config';
+)
 }
 
 

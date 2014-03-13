@@ -2,9 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="b11a50cd-29df-4864-87f6-e1bb4b58ea4e" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.info" afterPath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.info" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.module" afterPath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.module" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.test" afterPath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.test" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/.idea/workspace.xml" afterPath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/.idea/workspace.xml" />
     </list>
     <ignored path="nosh.iws" />

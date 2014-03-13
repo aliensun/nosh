@@ -1,0 +1,11 @@
+name = Single Platform API Web Service Client
+description = Single Platform API Integration.
+package = Nosh Extras
+core = 7.x
+files[] = singleplatform.test
+; dependencies[] = wsclient_soap
+dependencies[] = wsclient_rest
+
+; Information added by drupal.org packaging script on 2013-04-16
+version = "7.x-1.0"
+datestamp = "1366136535

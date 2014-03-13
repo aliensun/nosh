@@ -17,14 +17,14 @@ class WSClientRESTTestCase extends DrupalWebTestCase {
   }
 
   function setUp() {
-    parent::setUp('simpleplatform');
+    parent::setUp('singleplatform');
   }
 
   /**
-   * Tests invoking the simpleplatform translation service.
+   * Tests invoking the singleplatform translation service.
    */
   function testServiceInvocation() {
-    $service = wsclient_service_load('simpleplatform');
+    $service = wsclient_service_load('singleplatform');
     $result = $service->search('drupal');
     $this->assertEqual($result['query'], 'drupal', 'REST service invocation was successful.');
   }
