@@ -2,7 +2,7 @@ name = Simpleplatform
 description = Simple Platform API Integration.
 package = Nosh Extras
 core = 7.x
-files[] = simpleplatform_examples.test
+files[] = simpleplatform.test
 ; dependencies[] = wsclient_soap
 dependencies[] = wsclient_rest
 
