@@ -1,0 +1,10 @@
+name = Web service client Views Integration
+description = Views Integration for Web service client
+package = Views
+core = 7.x
+dependencies[] = views
+dependencies[] = wsclient
+files[] = wsclient_views.views.inc
+files[] = plugins/wsclient_views_plugin_query.inc
+files[] = handlers/wsclient_views_handler_field_dummy.inc
+files[] = handlers/wsclient_views_handler_field.inc

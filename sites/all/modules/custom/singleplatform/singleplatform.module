@@ -12,7 +12,9 @@ function simpleplatform_menu()
     $items = array();
 
     $items['admin/config/singleplatform'] = array(
-        'title' => 'Signle Platform API Config';
+        'title' => 'Single Platform API',
+        'description' => 'Single Platform API settings',
+    );
 )
 }
 

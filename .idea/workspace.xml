@@ -3,8 +3,9 @@
   <component name="ChangeListManager">
     <list default="true" id="b11a50cd-29df-4864-87f6-e1bb4b58ea4e" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.module" afterPath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.module" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.test" afterPath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/simpleplatform.test" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/singleplatform/singleplatform.module" afterPath="$PROJECT_DIR$/sites/all/modules/custom/singleplatform/singleplatform.module" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/.idea/workspace.xml" afterPath="$PROJECT_DIR$/sites/all/modules/custom/simpleplatform/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/sites/all/modules/custom/singleplatform/.idea/workspace.xml" afterPath="$PROJECT_DIR$/sites/all/modules/custom/singleplatform/.idea/workspace.xml" />
     </list>
     <ignored path="nosh.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -333,7 +334,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="51" y="31" width="1389" height="860" extended-state="0" />
+    <frame x="51" y="31" width="1389" height="860" extended-state="1" />
     <editor active="true" />
     <layout>
       <window_info id="Changes" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />

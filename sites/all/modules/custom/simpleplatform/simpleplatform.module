@@ -7,16 +7,6 @@
 
 
 
-function simpleplatform_menu()
-{
-    $items = array();
-
-    $items['admin/config/simpleplatform'] = array(
-        'title' => 'Sim';
-    )
-}
-
-
 
 
 

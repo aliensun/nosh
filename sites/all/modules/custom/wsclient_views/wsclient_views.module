@@ -1,0 +1,335 @@
+<?php
+
+/**
+ * @file
+ * wsclient_views module file.
+ */
+
+/**
+ * Imeplements hook_menu().
+ */
+function wsclient_views_menu() {
+  $items = array();
+
+  $items[WSCLIENT_UI_PATH . '/manage/%wsclient_service/views/%wsclient_ui_operation'] = array(
+    'title' => 'Views Data Configuration',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('wsclient_views_configuration', 5, 7),
+    'load arguments' => array(5),
+    'access callback' => TRUE,
+    'file' => 'wsclient_views.admin.inc',
+  );
+
+  return $items;
+}
+
+function wsclient_views_theme($existing, $type, $theme, $path) {
+  return array(
+    'wsclient_views_admin_form' => array(
+      'render element' => 'form',
+    ),
+  );
+}
+
+function theme_wsclient_views_admin_form($vars) {
+  $form = $vars['form'];
+
+  if (!empty($form['result_data']['#value'])) {
+    foreach (element_children($form['result_row']) as $key) {
+      $row = array();
+
+      foreach(element_children($form['result_row'][$key]) as $skey) {
+        if ($skey == 'handler') {
+          $row['handler'] = array('data' => drupal_render($form['result_row'][$key][$skey]), 'class' => array('radio'));
+        }
+        else {
+          $row[$skey] = array('data' => drupal_render($form['result_row'][$key][$skey]), 'class' => array('wsclient-views'));
+          if ($skey == 'name') {
+            // Add render toggle
+            $row['render_col'] = array('data' => drupal_render($form['do_render'][$key]), 'class' => array('wsclient-views'));
+          }
+        }
+      }
+
+      // Add master checkbox
+      $row['master_col'] = array('data' => drupal_render($form['master_column'][$key]), 'class' => array('wsclient-views'));
+      $rows[] = array($row['expand'], $row['name'], $row['type'], $row['handler'], $row['render_col'], $row['master_col'],);
+    }
+
+    if (isset($rows)) {
+      $header = array("Expand", 'Field Name', 'Datatype', 'Handler/Renderer', 'Add Column', 'Master Column');
+
+      $form['result_row']['table']['#markup'] = theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'stiffzx')));
+      $form['result_row']['table']['#weight'] = 5.01;
+    }
+  }
+
+  return drupal_render_children($form);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Alter the wsclient service form to add in contextual links in the operations
+ * table.
+ */
+function wsclient_views_form_wsclient_service_form_alter(&$form, &$form_state) {
+  // Check to see if this service has defined datatypes
+  $service = $form_state['wsclient_service'];
+  if (empty($service->datatypes)) {
+    return;
+  }
+
+  for ($i = 0; $i < (count($form['operations']['#rows']) - 1); $i++) {
+    $operation = $form['operations']['#rows'][$i][0]['data']['#name'];
+    // Check to see if this operation has a result type;
+    if (isset($service->operations[$operation]['result']['type'])) {
+      $form['operations']['#rows'][$i][] = l(t('Views Configuration'), WSCLIENT_UI_PATH . '/manage/' . $service->name . '/views/' . $operation);
+    }
+    else {
+      $form['operations']['#rows'][$i][] = '';
+    }
+  }
+
+  $form['operations']['#rows'][$i]['data'][0]['colspan'] += 1;
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function wsclient_views_views_api() {
+  return array(
+    'api' => '3.0',
+    'path' => drupal_get_path('module', 'wsclient_views'),
+  );
+}
+
+function wsclient_views_raw_type($service_name, $wsclient_type_name) {
+  $raw_type = str_replace('wsclient_', '', $wsclient_type_name);
+  $raw_type = str_replace($service_name . '_', '', $raw_type);
+  return $raw_type;
+}
+
+function wsclient_views_type_info_populate(array &$type_info, array $all_types, $recursion_stop = array()) {
+  if (isset($type_info['property info'])) {
+    foreach ($type_info['property info'] as $name => &$info) {
+      if (!isset($info['label']) || $info['label'] == '') {
+        $info['label'] = $name;
+      }
+      // Get the global type name.
+      $type = wsclient_views_global_type_name($info['type'], $all_types);
+      // Date values are converted from ISO strings to timestamp, if needed.
+      if($type == 'date') {
+        $info['getter callback'] = 'entity_property_verbatim_date_get';
+      }
+      // Copy recursion information for this property.
+      $new_recursion_stop = $recursion_stop;
+      if (!isset($info['property info']) && isset($all_types[$type]) && !isset($recursion_stop[$type])) {
+        $info['type'] = strpos($info['type'], 'list<') === 0 ? 'list<' . $type . '>' : $type;
+        // Copy over the property information.
+        $info['property info'] = $all_types[$type]['property info'];
+        // Mark this type as finished.
+        $new_recursion_stop[$type] = TRUE;
+      }
+      // Also populate nested property info arrays (recursion).
+      wsclient_views_type_info_populate($info, $all_types, $new_recursion_stop);
+    }
+  }
+}
+
+/**
+ * Map a service specific type name to the global type name.
+ */
+function wsclient_views_global_type_name($type, $all_types) {
+  if (isset($all_types[$type])) {
+    return $type;
+  }
+  if (strpos($type, 'list<') === 0 && isset($all_types[substr($type, 5, -1)])) {
+    return substr($type, 5, -1);
+  }
+  return $type;
+}
+
+function wsclient_views_result_type_parse($config, $datatypes) {
+  $property_info = wsclient_views_nested_property_info($config['result_data'], $datatypes);
+  $selected = $config['result_row'];
+  $renders = array_filter($config['do_render']);
+  $views = array();
+
+  foreach ($selected as $index => $info) {
+    if ((isset($info['expand']) && $info['expand']) || !isset($info['handler']) || !isset($renders[$index])) {
+      continue;
+    }
+    $label = isset($property_info[$index]['label']) ? $property_info[$index]['label'] : $index;
+    $views[$index] = array(
+      'title' => $label,
+      'help' => $label . ' property',
+      'field' => array(
+        'handler' => $info['handler'],
+      ),
+    );
+
+    if ($views[$index]['field']['handler'] == 'views_handler_field_markup') {
+      $views[$index]['field']['format'] = filter_fallback_format();
+    }
+  }
+  return $views;
+}
+
+function wsclient_views_result_parameter_parse(array $parameters) {
+  foreach ($parameters as $index => $parameter) {
+    $label = isset($parameter['label']) ? $parameter['label'] : $index;
+    $views[$index] = array(
+      'title' => $label,
+      'help' => $label . ' Filter',
+      'argument' => array(
+        'field' => $index,
+        'handler' => wsclient_views_paramater_info($parameter['type']),
+      ),
+    );
+  }
+  return $views;
+}
+
+/**
+ * Return property info for a nested property
+ *
+ * @param string $property
+ *   The property in the format root_property:sub_property:sub_sub_property
+ * @param unknown_type $datatypes
+ */
+function wsclient_views_nested_property_info($property, $datatypes) {
+  $primitives = array('text', 'integer', 'boolean', 'float', 'date');
+
+  $parts = explode(":", $property);
+  $root_part = array_shift($parts);
+
+  $property_info = $datatypes[$root_part]['property info'];
+
+  while (count($parts)) {
+    $this_part = array_shift($parts);
+
+    if (isset($property_info[$this_part]['property info'])) {
+      $property_info = $property_info[$this_part]['property info'];
+    }
+    else {
+      $t = wsclient_views_global_type_name($property_info[$this_part]['type'], $datatypes);
+
+      if (isset($datatypes[$t])) {
+        $property_info = $datatypes[$t]['property info'];
+      }
+      else {
+        if (in_array($property_info[$this_part]['type'], $primitives)) {
+          $property_info = array($property_info[$this_part]['type'] => array('label' => $property_info[$this_part]['type'], 'type' => $property_info[$this_part]['type']));
+        }
+        else {
+          $property_info = array();
+        }
+      }
+    }
+  }
+  return $property_info;
+}
+
+function wsclient_views_nested_property_value($property, $results) {
+  // Positive limit is necessary to get non-empty array in any case.
+  $parts = explode(":", $property, 10);
+  // Extract root only in case of composite property.
+  if (count($parts) > 1) {
+    $root_part = array_shift($parts);
+  }
+  $result = $results;
+  foreach ($parts as $part) {
+    if (is_object($result) && !empty($result->$part)) {
+      $result = $result->$part;
+      break;
+    }
+    elseif (is_array($result) && !empty($result[$part])) {
+      $result = $result[$part];
+      break;
+    }
+    else {
+      // It means that property is not found in the nested structure.
+      $result = FALSE;
+    }
+  }
+  return $result;
+}
+
+function wsclient_views_renderer_info() {
+  return array(
+    'WSClientViewsHandlerFieldDummy' => 'Dummy',
+    'WSClientViewsHandlerField' => 'Default Field Handler',
+    'views_handler_field_boolean' => 'Boolean',
+    'views_handler_field_broken' => 'Broken',
+    'views_handler_field_counter' => 'Counter',
+    'views_handler_field_date' => 'Date',
+    'views_handler_field_entity' => 'Entity',
+    'views_handler_field_markup' => 'Markup',
+    'views_handler_field_node' => 'Node',
+    'views_handler_field_numeric' => 'Numeric',
+    'views_handler_field_url' => 'URL',
+    'views_handler_field_user' => 'User',
+    'views_handler_field_xss' => 'XSS Filtered',
+  );
+}
+
+function wsclient_views_paramater_info($type) {
+  switch ($type) {
+    case 'text':
+      return 'views_handler_argument_string';
+    case 'boolean':
+      return 'views_handler_argument_numeric';
+    case 'integer':
+    case 'float':
+      return 'views_handler_argument_numeric';
+    case 'uri':
+      return 'views_handler_argument_string';
+    case 'date':
+      return 'views_handler_argument_date';
+    default:
+      return FALSE;
+  }
+  return array(
+    'views_handler_argument_broken',
+    'views_handler_argument_null',
+    'views_handler_argument_numeric',
+    'views_handler_argument_search',
+    'views_handler_argument_string',
+  );
+}
+
+function wsclient_views_handler_default($type) {
+  switch ($type) {
+    case 'text':
+      return 'views_handler_field_markup';
+    case 'boolean':
+      return 'views_handler_field_boolean';
+    case 'integer':
+    case 'float':
+      return 'views_handler_field_numeric';
+    case 'uri':
+      return 'views_handler_field_url';
+    case 'date':
+      return 'views_handler_field_date';
+    default:
+      return FALSE;
+  }
+}
+
+function wsclient_views_primitive_datatype($type) {
+  $primitives = array('text', 'integer', 'boolean', 'float', 'date');
+  return (bool) in_array($type, $primitives);
+}
+
+/**
+ * Implements hook_default_wsclient_service_alter().
+ */
+function wsclient_views_default_wsclient_service_alter(array &$services) {
+  // Set name property of each operation, as it is required by wsclient_views.
+  foreach ($services as $service) {
+    foreach ($service->operations as $operation_name => $operation) {
+      $service->operations[$operation_name]['name'] = $operation_name;
+    }
+  }
+}
